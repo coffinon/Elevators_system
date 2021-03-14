@@ -1,50 +1,34 @@
 #include "elevator.h"
 
+static uint8_t elevatorsCounter;
 
-static void elevator_up(elevator_t *pEle);
-static void elevator_down(elevator_t *pEle);
-
-static uint8_t elevatorsCounter = 1;
-static uint8_t passengersCounter = 0;
-
-// --------------------------------------------------- structure initializations
+static void elevator_load(elevator_t *pEle, uint8_t index);
+static void elevator_unload(elevator_t *pEle, uint8_t index);
 
 /*
-*   Function creates new elevator
+*   Function initializes new elevator
 */
 
 elevator_t *create_new_elevator(void)
 {
     elevator_t *ele = malloc(sizeof(elevator_t));
     
-    ele->id =                       elevatorsCounter++;
+    ele->id =                       ++elevatorsCounter;
     ele->currentFloor =             1;
     ele->maxFloor =                 0;
     ele->minFloor =                 0;
-    ele->nPassengers =              0;
     ele->state =                    STATE_IDLE;
-    ele->bufferSize =               BUFFER_SIZE;
-    ele->pBaseBufferAddr =          calloc(1, BUFFER_SIZE * sizeof(uint8_t));
+    
+    for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+    {
+        ele->pas[i].id =            i + 1;
+        ele->pas[i].entryFloor =    0;
+        ele->pas[i].exitFloor =     0;
+        ele->pas[i].state =         STATE_OUTSIDE;
+    }
     
     return ele;
 }
-
-/*
-*   Function creates new passenger
-*/
-
-passenger_t *create_new_passenger(uint8_t entry_floor, uint8_t exit_floor)
-{
-    passenger_t *pas = malloc(sizeof(passenger_t));
-    
-    pas->id =                      passengersCounter++;
-    pas->entryFloor =              entry_floor;
-    pas->exitFloor =               exit_floor;
-    
-    return pas;
-}
-
-// ---------------------------------------------------------------- print status
 
 /*
 *   Function prints given elevator status
@@ -52,154 +36,258 @@ passenger_t *create_new_passenger(uint8_t entry_floor, uint8_t exit_floor)
 
 void print_elevator_status(elevator_t *pEle)
 {
-    printf("Elevator nr.%d status...\n", pEle->id);
+    printf("Elevator nr.%d status................................\n", pEle->id);
     printf("Current floor number :\t%d\n", pEle->currentFloor);
     printf("Max floor number :\t%d\n", pEle->maxFloor);
     printf("Min floor number :\t%d\n", pEle->minFloor);
-    printf("Number of passengers :\t%d\n", pEle->nPassengers);
     
     switch(pEle->state)
     {
         case STATE_IDLE :
             printf("Current state of the elevator :\tIDLE\n");
             break;
-        case STATE_MOVE_UP :
+        case STATE_RUNNING_UP :
             printf("Current state of the elevator :\tRUNNING UP\n");
             break;
-        case STATE_MOVE_DOWN :
+        case STATE_RUNNING_DOWN :
             printf("Current state of the elevator :\tRUNNING DOWN\n");
+            break;
+        case STATE_STOP :
+            printf("Current state of the elevator :\tSTOP\n");
+            break;
+        default :
+            printf("Invalid state of the elevator\n");
     }
     
-    printf("Maximum number of people in the elevator at the same time :\t%d\n", pEle->bufferSize);
-    printf("Base address of the buffer :\t%d\n",  pEle->pBaseBufferAddr);
-    
-    printf("Values in the buffer :\t");
-    for(int i = 0; i < pEle->bufferSize; ++i)
+    for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
     {
-        printf("%d ", pEle->pBaseBufferAddr[i]);
+        printf("\nPassenger ID :\t%d\n", pEle->pas[i].id);
+        printf("Passenger entry floor :\t%d\n", pEle->pas[i].entryFloor);
+        printf("Passenger exit floor :\t%d\n", pEle->pas[i].exitFloor);
+        
+        switch(pEle->pas[i].state)
+        {
+            case STATE_INSIDE :
+                printf("Passenger direction :\tINSIDE\n");
+                break;
+            case STATE_OUTSIDE :
+                printf("Passenger direction :\tOUTSIDE\n");
+        }
     }
+    
     printf("\n\n");
 }
 
-// ---------------------------------------------------------- elevator scheduler
+/*
+*   Function picks the passenger up
+*/
+
+void pickup_passenger(elevator_t *pEle, uint8_t entry_f, uint8_t exit_f)
+{
+    for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+    {
+        if((pEle->pas[i].entryFloor == 0) && (pEle->pas[i].exitFloor == 0))
+        {
+            pEle->pas[i].entryFloor = entry_f;
+            pEle->pas[i].exitFloor = exit_f;
+            
+            return;
+        }
+    }
+    
+    printf("Not enough space in the elevator\n\n\n");
+}
 
 /*
-*   Function adds passenger that is waiting for the elevetor to pick him up
+*   Function simulates elevator's behaviour
 */
 
 void elevator_step(elevator_t *pEle)
 {
+    // Idle state handle
+    
     if(pEle->state == STATE_IDLE)
     {
-        pEle->maxFloor = 0;
+        // Reset maximum and minimum floor values
+        
+        pEle->maxFloor = pEle->currentFloor;
         pEle->minFloor = pEle->currentFloor;
         
-        for(int i = 0; i < MAX_NUMBER_OF_PASSENGERS; ++i)
+        // Update maximum and minimum floor values
+        
+        for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
         {
-            if(pEle->pBaseBufferAddr[i] > pEle->maxFloor)
-                pEle->maxFloor = pEle->pBaseBufferAddr[i];
-            if((pEle->pBaseBufferAddr[i] < pEle->minFloor) && (pEle->pBaseBufferAddr[i] != 0))
-                pEle->minFloor = pEle->pBaseBufferAddr[i];
+            if(pEle->pas[i].entryFloor > pEle->maxFloor)
+                pEle->maxFloor = pEle->pas[i].entryFloor;
+            if((pEle->pas[i].entryFloor < pEle->minFloor) && pEle->pas[i].entryFloor)
+                pEle->minFloor = pEle->pas[i].entryFloor;
         }
-        if((pEle->maxFloor != 0) && (pEle->maxFloor > pEle->currentFloor))
+        
+        // Decide in which direction you want to start moving
+        
+        if(pEle->maxFloor && (pEle->maxFloor > pEle->currentFloor))
+            pEle->state = STATE_RUNNING_UP;
+        else if(pEle->minFloor && (pEle->minFloor < pEle->currentFloor))
+            pEle->state = STATE_RUNNING_DOWN;
+        
+        // Look if someone waits for an elevator on the current floor
+        
+        for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
         {
-            pEle->state = STATE_MOVE_UP;
-            pEle->minFloor = 0;
+            if(pEle->pas[i].entryFloor == pEle->currentFloor)
+                elevator_load(pEle, i);
+            if(pEle->pas[i].entryFloor == pEle->currentFloor)
+                elevator_unload(pEle, i);
         }
-        else if((pEle->minFloor != 0) && (pEle->minFloor < pEle->currentFloor))
-        {
-            pEle->state = STATE_MOVE_DOWN;
-            pEle->maxFloor = 0;
-        }
-        else
-            pEle->minFloor = 0;
+        
     }
-    else if(pEle->state == STATE_MOVE_UP)
+    
+    // Running up state handle
+    
+    else if(pEle->state == STATE_RUNNING_UP)
     {
+        // Increment current floor value
+        
         if(pEle->currentFloor < pEle->maxFloor)
             pEle->currentFloor++;
         
-        if(pEle->currentFloor == pEle->maxFloor)
+        // Look if someone waits for an elevator on the current floor
+        
+        for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
         {
-            for(int i = 0; i < MAX_NUMBER_OF_PASSENGERS * 2; ++i)
+            if((pEle->pas[i].entryFloor == pEle->currentFloor) && (pEle->pas[i].state == STATE_OUTSIDE))
+                elevator_load(pEle, i);
+            if((pEle->pas[i].exitFloor == pEle->currentFloor) && (pEle->pas[i].state == STATE_INSIDE))
+                elevator_unload(pEle, i);
+        }
+        
+        // Update maximum and minimum floor values
+        
+        uint8_t last_max_floor = pEle->maxFloor;
+        
+        pEle->maxFloor = 0;
+        pEle->minFloor = pEle->currentFloor;
+        
+        for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+        {
+            // Set new maximum floor value
+            
+            if((pEle->pas[i].entryFloor > pEle->maxFloor) && (pEle->pas[i].state == STATE_OUTSIDE))
+                pEle->maxFloor = pEle->pas[i].entryFloor;
+            if((pEle->pas[i].exitFloor > pEle->maxFloor) && (pEle->pas[i].state == STATE_INSIDE))
+                pEle->maxFloor = pEle->pas[i].exitFloor;
+            
+            // Set new minimum floor value
+            
+            if((pEle->pas[i].entryFloor < pEle->minFloor) && (pEle->pas[i].state == STATE_OUTSIDE) && pEle->pas[i].entryFloor)
+                pEle->minFloor = pEle->pas[i].entryFloor;
+            if((pEle->pas[i].exitFloor < pEle->minFloor) && (pEle->pas[i].state == STATE_INSIDE) && pEle->pas[i].exitFloor)
+                pEle->minFloor = pEle->pas[i].exitFloor;
+        }
+        
+        // Change direction or go back to idle state
+        
+        last_max_floor = (pEle->maxFloor > last_max_floor) ? pEle->maxFloor : last_max_floor;
+        
+        if(pEle->currentFloor == last_max_floor)
+        {
+            if(pEle->minFloor < pEle->currentFloor)
             {
-                if(pEle->pBaseBufferAddr[i] > pEle->maxFloor)
-                    pEle->maxFloor = pEle->pBaseBufferAddr[i];
+                pEle->maxFloor = pEle->currentFloor;
+                pEle->state = STATE_RUNNING_DOWN;
             }
-            if(pEle->currentFloor == pEle->maxFloor)
+            else
             {
+                pEle->maxFloor = pEle->currentFloor;
+                pEle->maxFloor = pEle->currentFloor;
                 pEle->state = STATE_IDLE;
-                pEle->maxFloor = 0;
-            }
-        }
-        
-        for(int i = 0; i < MAX_NUMBER_OF_PASSENGERS; ++i)
-        {
-            if(pEle->pBaseBufferAddr[i] == pEle->currentFloor)
-            {
-                pEle->pBaseBufferAddr[i] = 0;
-                pEle->nPassengers++;
-            }
-        }
-        
-        for(int i = MAX_NUMBER_OF_PASSENGERS - 1; i < MAX_NUMBER_OF_PASSENGERS * 2; ++i)
-        {
-            if(pEle->pBaseBufferAddr[i] == pEle->currentFloor)
-            {
-                pEle->pBaseBufferAddr[i] = 0;
-                pEle->nPassengers--;
             }
         }
     }
-    else if(pEle->state == STATE_MOVE_DOWN)
+    
+    // Running down state handle
+    
+    else if(pEle->state == STATE_RUNNING_DOWN)
     {
+        // Increment current floor value
+        
         if(pEle->currentFloor > pEle->minFloor)
             pEle->currentFloor--;
         
-        if(pEle->currentFloor == pEle->minFloor)
+        // Look if someone waits for an elevator on the current floor
+        
+        for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
         {
-            for(int i = 0; i < MAX_NUMBER_OF_PASSENGERS * 2; ++i)
+            if((pEle->pas[i].entryFloor == pEle->currentFloor) && (pEle->pas[i].state == STATE_OUTSIDE))
+                elevator_load(pEle, i);
+            if((pEle->pas[i].exitFloor == pEle->currentFloor) && (pEle->pas[i].state == STATE_INSIDE))
+                elevator_unload(pEle, i);
+        }
+        
+        // Update maximum and minimum floor values
+        
+        uint8_t last_min_floor = pEle->minFloor;
+        
+        pEle->maxFloor = 0;
+        pEle->minFloor = pEle->currentFloor;
+        
+        for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+        {
+            // Set new maximum floor value
+            
+            if((pEle->pas[i].entryFloor > pEle->maxFloor) && (pEle->pas[i].state == STATE_OUTSIDE))
+                pEle->maxFloor = pEle->pas[i].entryFloor;
+            if((pEle->pas[i].exitFloor > pEle->maxFloor) && (pEle->pas[i].state == STATE_INSIDE))
+                pEle->maxFloor = pEle->pas[i].exitFloor;
+            
+            // Set new minimum floor value
+            
+            if((pEle->pas[i].entryFloor < pEle->minFloor) && (pEle->pas[i].state == STATE_OUTSIDE) && pEle->pas[i].entryFloor)
+                pEle->minFloor = pEle->pas[i].entryFloor;
+            if((pEle->pas[i].exitFloor < pEle->minFloor) && (pEle->pas[i].state == STATE_INSIDE) && pEle->pas[i].exitFloor)
+                pEle->minFloor = pEle->pas[i].exitFloor;
+        }
+        
+        // Change direction or go back to idle state
+        
+        last_min_floor = (pEle->minFloor < last_min_floor) ? pEle->minFloor : last_min_floor;
+        
+        if(pEle->currentFloor == last_min_floor)
+        {
+            if(pEle->maxFloor > pEle->currentFloor)
             {
-                if((pEle->pBaseBufferAddr[i] < pEle->minFloor) && (pEle->pBaseBufferAddr[i] != 0))
-                    pEle->minFloor = pEle->pBaseBufferAddr[i];
+                pEle->minFloor = pEle->currentFloor;
+                pEle->state = STATE_RUNNING_UP;
             }
-            if(pEle->currentFloor == pEle->minFloor)
+            else
             {
+                pEle->minFloor = pEle->currentFloor;
+                pEle->maxFloor = pEle->currentFloor;
                 pEle->state = STATE_IDLE;
-                pEle->minFloor = 0;
             }
-        }
-        
-        for(int i = 0; i < MAX_NUMBER_OF_PASSENGERS; ++i)
-        {
-            if(pEle->pBaseBufferAddr[i] == pEle->currentFloor)
-            {
-                pEle->pBaseBufferAddr[i] = 0;
-                pEle->nPassengers++;
-            }
-        }
-        
-        for(int i = MAX_NUMBER_OF_PASSENGERS - 1; i < MAX_NUMBER_OF_PASSENGERS * 2; ++i)
-        {
-            if(pEle->pBaseBufferAddr[i] == pEle->currentFloor)
-            {
-                pEle->pBaseBufferAddr[i] = 0;
-                pEle->nPassengers--;
-            }
+                
         }
     }
 }
 
-// -------------------------------------------------------------- queue handling
-
 /*
-*   Function adds passenger that is waiting for the elevetor to pick him up
+*   Supporting function loading passenger to the elevator
 */
 
-void add_passenger(elevator_t *pEle, passenger_t *pPas)
+static void elevator_load(elevator_t *pEle, uint8_t index)
 {
-    *(pEle->pBaseBufferAddr + pPas->id) = pPas->entryFloor;
-    *(pEle->pBaseBufferAddr + pPas->id + MAX_NUMBER_OF_PASSENGERS) = pPas->exitFloor;
-    free(pPas);
+    pEle->pas[index].entryFloor = 0;
+    pEle->pas[index].state = STATE_INSIDE;
 }
+
+/*
+*   Supporting function loading passenger to the elevator
+*/
+
+static void elevator_unload(elevator_t *pEle, uint8_t index)
+{
+    pEle->pas[index].exitFloor = 0;
+    pEle->pas[index].state = STATE_OUTSIDE;
+}
+
 
