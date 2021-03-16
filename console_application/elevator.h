@@ -5,7 +5,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MAX_PASSENGERS_COUNT    2
+#define MAX_PASSENGERS_COUNT    4
+#define MAX_FLOORS_COUNT        10
+#define MAX_ELEVATORS_COUNT     16
 
 #define STATE_IDLE              0
 #define STATE_RUNNING_UP        1

@@ -11,6 +11,8 @@ static void elevator_unload(elevator_t *pEle, uint8_t index);
 
 elevator_t *create_new_elevator(void)
 {
+    // dynamically allocate data for the elevator structure and initialize its values
+    
     elevator_t *ele = malloc(sizeof(elevator_t));
     
     ele->id =                       ++elevatorsCounter;
@@ -26,6 +28,8 @@ elevator_t *create_new_elevator(void)
         ele->pas[i].exitFloor =     0;
         ele->pas[i].state =         STATE_OUTSIDE;
     }
+    
+    // return pointer to the structure with the allocated memory
     
     return ele;
 }
@@ -51,9 +55,6 @@ void print_elevator_status(elevator_t *pEle)
             break;
         case STATE_RUNNING_DOWN :
             printf("Current state of the elevator :\tRUNNING DOWN\n");
-            break;
-        case STATE_STOP :
-            printf("Current state of the elevator :\tSTOP\n");
             break;
         default :
             printf("Invalid state of the elevator\n");
@@ -84,18 +85,35 @@ void print_elevator_status(elevator_t *pEle)
 
 void pickup_passenger(elevator_t *pEle, uint8_t entry_f, uint8_t exit_f)
 {
-    for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+    // Check if entry and exit floors are between our highest and lowest floors
+    
+    if(((entry_f <= MAX_FLOORS_COUNT) && (entry_f > 0)) && ((exit_f <= MAX_FLOORS_COUNT) && (exit_f > 0)))
     {
-        if((pEle->pas[i].entryFloor == 0) && (pEle->pas[i].exitFloor == 0))
+        // Check if someone is not giving us data that makes no sense
+        
+        if(entry_f == exit_f)
         {
-            pEle->pas[i].entryFloor = entry_f;
-            pEle->pas[i].exitFloor = exit_f;
-            
+            printf("It makes no sense at all\n");
             return;
         }
+        
+        // Check if there is any free space in the queue
+        
+        for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+        {
+            if((pEle->pas[i].entryFloor == 0) && (pEle->pas[i].exitFloor == 0))
+            {
+                pEle->pas[i].entryFloor = entry_f;
+                pEle->pas[i].exitFloor = exit_f;
+                
+                return;
+            }
+        }
+        
+        printf("Not enough space in the elevator\n\n\n");
     }
-    
-    printf("Not enough space in the elevator\n\n\n");
+    else
+        printf("Invalid entry / exit floor\n\n\n");
 }
 
 /*
