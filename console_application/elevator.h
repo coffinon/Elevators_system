@@ -4,9 +4,15 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
+#include <stdbool.h>
 
-#define MAX_PASSENGERS_COUNT    4
+#define MAX_PASSENGERS_COUNT    5
+
+#define MIN_FLOORS_COUNT        2
 #define MAX_FLOORS_COUNT        10
+
+#define MIN_ELEVATORS_COUNT     2
 #define MAX_ELEVATORS_COUNT     16
 
 #define STATE_IDLE              0
@@ -37,12 +43,16 @@ typedef struct
 } elevator_t;
 
 
-elevator_t *create_new_elevator(void);
+elevator_t *elevator_create(void);
 
 void print_elevator_status(elevator_t *pEle);
 
 void pickup_passenger(elevator_t *pEle, uint8_t entry_f, uint8_t exit_f);
 
 void elevator_step(elevator_t *pEle);
+
+unsigned int get_elevator_count(void);
+
+void clear_screen(void);
 
 #endif /* _ELEVATOR_H_ */

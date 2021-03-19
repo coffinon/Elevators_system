@@ -1,13 +1,21 @@
-#include "elevator.h"
 #include <stdio.h>
-
-
-unsigned int get_elevator_count(void);
-void clear_screen(void);
+#include <stdbool.h>
+#include "elevator_unit_test.h"
 
 
 int main()
 {
+    printf("Running elevator unit test...\n");
+    if (true == elevator_unit_test())
+		return 0;
+    
+    return 0;
+}
+
+
+
+/*
+
     unsigned int elevator_count = get_elevator_count();
     
     elevator_t *ele[elevator_count];
@@ -70,38 +78,4 @@ int main()
         }
     }
     
-    return 0;
-}
-
-
-/*
-*   Function gets information how many elevators the user want to simulate
 */
-
-unsigned int get_elevator_count(void)
-{
-    unsigned int temp;
-    
-    while(1){
-        printf("HOW MANY ELEVATORS DO YOU NEED ?\n");
-        scanf("%u", &temp);
-        
-        clear_screen();
-        
-        if(temp > MAX_ELEVATORS_COUNT)
-            printf("MAXIMUM NUMBER OF ELEVATORS IS : %d\n", MAX_ELEVATORS_COUNT);
-        else
-            break;
-    }
-    
-    return temp;
-}
-
-/*
-*   Function clears the screen
-*/
-
-void clear_screen(void)
-{
-    printf("\e[1;1H\e[2J");
-}

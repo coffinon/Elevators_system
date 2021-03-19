@@ -9,29 +9,29 @@ static void elevator_unload(elevator_t *pEle, uint8_t index);
 *   Function initializes new elevator
 */
 
-elevator_t *create_new_elevator(void)
+elevator_t *elevator_create()
 {
     // dynamically allocate data for the elevator structure and initialize its values
+    elevator_t *pEle = malloc(sizeof(elevator_t));
     
-    elevator_t *ele = malloc(sizeof(elevator_t));
-    
-    ele->id =                       ++elevatorsCounter;
-    ele->currentFloor =             1;
-    ele->maxFloor =                 0;
-    ele->minFloor =                 0;
-    ele->state =                    STATE_IDLE;
-    
-    for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+    if(pEle != NULL)
     {
-        ele->pas[i].id =            i + 1;
-        ele->pas[i].entryFloor =    0;
-        ele->pas[i].exitFloor =     0;
-        ele->pas[i].state =         STATE_OUTSIDE;
+        pEle->id =                       ++elevatorsCounter;
+        pEle->currentFloor =             1;
+        pEle->maxFloor =                 1;
+        pEle->minFloor =                 1;
+        pEle->state =                    STATE_IDLE;
+        
+        for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+        {
+            pEle->pas[i].id =            i + 1;
+            pEle->pas[i].entryFloor =    0;
+            pEle->pas[i].exitFloor =     0;
+            pEle->pas[i].state =         STATE_OUTSIDE;
+        }
     }
     
-    // return pointer to the structure with the allocated memory
-    
-    return ele;
+    return pEle;
 }
 
 /*
@@ -308,4 +308,67 @@ static void elevator_unload(elevator_t *pEle, uint8_t index)
     pEle->pas[index].state = STATE_OUTSIDE;
 }
 
+/*
+*   Function gets information how many elevators the user want to simulate
+*/
 
+unsigned int get_elevator_count(void)
+{
+    unsigned int elevator_count;
+    char num[10];
+    bool is_number = true;
+    
+    while(1){
+        // Clear the input buffer
+        
+        for(int i = 0; i < 10; ++i)
+            num[i] = '\0';
+        
+        // Get user input
+        
+        printf("HOW MANY ELEVATORS DO YOU NEED ?\n");
+        scanf("%s", num);
+        
+        clear_screen();
+        
+        // Check if input data includes digits only
+        
+        for(int i = 0; i < 10; ++i)
+            if(!isdigit(num[i]) && num[i] != '\0')
+            {
+                is_number = false;
+                break;
+            }
+        
+        // Check if input data numbers are in specific range
+        
+        if(is_number)
+        {
+            elevator_count = atoi(num);
+            
+            if(elevator_count > MAX_ELEVATORS_COUNT)
+                printf("MAXIMUM NUMBER OF ELEVATORS IS : %d\n", MAX_ELEVATORS_COUNT);
+            else if(elevator_count < MIN_ELEVATORS_COUNT)
+                printf("MINIMUM NUMBER OF ELEVATORS IS : %d\n", MIN_ELEVATORS_COUNT);
+            else
+                break;
+        }
+        else
+        {
+            printf("YOU CAN ONLY ENTER DIGITS AS AN INPUT\n");
+            is_number = true;
+        }
+            
+    }
+    
+    return elevator_count;
+}
+
+/*
+*   Function clears the screen
+*/
+
+void clear_screen(void)
+{
+    printf("\e[1;1H\e[2J");
+}
