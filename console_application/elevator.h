@@ -7,7 +7,7 @@
 #include <ctype.h>
 #include <stdbool.h>
 
-#define MAX_PASSENGERS_COUNT    5
+#define MAX_PASSENGERS_COUNT    10
 
 #define MIN_FLOORS_COUNT        2
 #define MAX_FLOORS_COUNT        10
@@ -47,7 +47,7 @@ elevator_t *elevator_create(void);
 
 void print_elevator_status(elevator_t *pEle);
 
-void pickup_passenger(elevator_t *pEle, uint8_t entry_f, uint8_t exit_f);
+bool pickup_passenger(elevator_t *pEle, uint8_t entry_f, uint8_t exit_f);
 
 void elevator_step(elevator_t *pEle);
 

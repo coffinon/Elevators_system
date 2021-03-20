@@ -26,11 +26,11 @@ static unsigned int elevator_current_id;
 *   Elevator initialization unit test function
 */
 
-static bool elevator_init_ut(elevator_t *pEle)
+static elevator_t *elevator_init_ut(void)
 {
     printf("Test 1: Checking elevator_init...\n");
     bool result = true;
-    pEle = elevator_create();
+    elevator_t *pEle = elevator_create();
     
     if(pEle == NULL)
         result = false;
@@ -47,7 +47,7 @@ static bool elevator_init_ut(elevator_t *pEle)
         printf("     State is IDLE: ");
         result &= test(pEle->state == STATE_IDLE);
         
-        for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+        for(uint8_t i = 0; i < MAX_PASSENGERS_COUNT; ++i)
         {
             printf("     #%d Passenger has unique ID: ", i);
             result &= test(pEle->pas[i].id == i + 1);
@@ -61,9 +61,83 @@ static bool elevator_init_ut(elevator_t *pEle)
     }
     
     printf("Test 1: %s\n\n", (true == result) ? PASSED : FAILED);
-    return result;
+    return pEle;
 }
 
+/*
+*   Elevator functionality unit test function
+*/
+
+static bool elevator_test_ut(elevator_t *pEle)
+{
+    printf("Test 2: Elevator go up test...\n");
+    bool result = true;
+    
+    uint8_t entry_floor = 1;
+    uint8_t exit_floor = 1;
+    
+    for(uint8_t i = 0; entry_floor + i <= MAX_FLOORS_COUNT; ++i)
+    {   
+        if((entry_floor == exit_floor + i))
+        {
+            printf("     #%d Passenger request not picked up : ", i);
+            result &= !test(pickup_passenger(pEle, entry_floor, exit_floor + i));
+        }
+        else
+        {
+            printf("     #%d Passenger request picked up : ", i);
+            result &= test(pickup_passenger(pEle, entry_floor, exit_floor + i));
+        }
+    }
+    printf("New passengers picked up : %s\n\n", (true == result) ? PASSED : FAILED);
+    
+    
+    for(uint8_t i = 0; i < MAX_FLOORS_COUNT; ++i)
+    {
+        elevator_step(pEle);
+        if(i > 0)
+        {
+            printf("     #%d Passenger dropped out : ", i - 1);
+            result &= test(pEle->pas[i - 1].state == STATE_OUTSIDE);
+        }
+    }
+    printf("Test 2: %s\n\n", (true == result) ? PASSED : FAILED);
+    
+    printf("Test 3: Elevator go down test...\n");
+    
+    entry_floor = 10;
+    exit_floor = 10;
+    
+    for(uint8_t i = 0; entry_floor - i > 0; ++i)
+    {   
+        if((entry_floor == exit_floor - i))
+        {
+            printf("     #%d Passenger request not picked up : ", i);
+            result &= !test(pickup_passenger(pEle, entry_floor, exit_floor - i));
+        }
+        else
+        {
+            printf("     #%d Passenger request picked up : ", i);
+            result &= test(pickup_passenger(pEle, entry_floor, exit_floor - i));
+        }
+    }
+    printf("New passengers picked up : %s\n\n", (true == result) ? PASSED : FAILED);
+    
+    for(uint8_t i = 0; i < MAX_FLOORS_COUNT; ++i)
+    {
+        elevator_step(pEle);
+        if(i > 0)
+        {
+            printf("     #%d Passenger dropped out : ", i - 1);
+            result &= test(pEle->pas[i - 1].state == STATE_OUTSIDE);
+        }
+    }
+    printf("Test 3: %s\n\n", (true == result) ? PASSED : FAILED);
+    
+    
+    
+    return result;
+}
 
 /*
 *   Elevator unit test function
@@ -75,11 +149,12 @@ bool elevator_unit_test()
     bool result = true;
     
     printf("========== PERFORMING TEST FOR ELEVATOR ==========\n");
-    for(int i = 0; true == result && i < ELEVATOR_COUNT; ++i) {
-        do {
-            if(false == (result &= elevator_init_ut(ele[i]))) break;
-        } while(0);
-        printf("========== TEST FOR ELEVATOR %d FINISHED WITH RESULT %s ==========\n", i, (true == result) ? PASSED : FAILED);
-    }
+    //for(uint8_t i = 0; true == result && i < ELEVATOR_COUNT; ++i) {
+    //    do {
+            if(false == (result &= (((ele[0] = elevator_init_ut()) == NULL) ? false : true)));//break;
+            if(false == (result &= elevator_test_ut(ele[0])));//break;
+    //    } while(0);
+    //    printf("========== TEST FOR ELEVATOR %d FINISHED WITH RESULT %s ==========\n", i, (true == result) ? PASSED : FAILED);
+    //}
   return result;
 }
