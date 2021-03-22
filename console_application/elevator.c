@@ -91,21 +91,13 @@ bool pickup_passenger(elevator_t *pEle, uint8_t entry_f, uint8_t exit_f)
 {
     // Check if entry and exit floors are between our highest and lowest floors
     
-    if(((entry_f <= MAX_FLOORS_COUNT) && (entry_f > 0)) && ((exit_f <= MAX_FLOORS_COUNT) && (exit_f > 0)))
+    if(entry_f <= MAX_FLOORS_COUNT && entry_f > 0 && exit_f <= MAX_FLOORS_COUNT && exit_f > 0 && entry_f != exit_f)
     {
-        // Check if someone is not giving us data that makes no sense
-        
-        if(entry_f == exit_f)
-        {
-            // printf("It makes no sense at all\n");
-            return false;
-        }
-        
         // Check if there is any free space in the queue
         
-        for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+        for(uint8_t i = 0; i < MAX_PASSENGERS_COUNT; ++i)
         {
-            if((pEle->pas[i].entryFloor == 0) && (pEle->pas[i].exitFloor == 0))
+            if(pEle->pas[i].entryFloor == 0 && pEle->pas[i].exitFloor == 0)
             {
                 pEle->pas[i].entryFloor = entry_f;
                 pEle->pas[i].exitFloor = exit_f;
@@ -113,12 +105,7 @@ bool pickup_passenger(elevator_t *pEle, uint8_t entry_f, uint8_t exit_f)
                 return true;
             }
         }
-        
-        printf("Not enough space in the elevator\n\n\n");
-        return false;
     }
-    else
-        printf("Invalid entry / exit floor\n\n\n");
     return false;
 }
 
@@ -142,14 +129,9 @@ void elevator_step(elevator_t *pEle)
 
 static void elevator_idle(elevator_t *pEle)
 {
-    // Reset maximum and minimum floor values
-        
-    pEle->maxFloor = pEle->currentFloor;
-    pEle->minFloor = pEle->currentFloor;
-        
     // Look if someone waits for an elevator on the current floor
         
-    for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+    for(uint8_t i = 0; i < MAX_PASSENGERS_COUNT; ++i)
     {
         if(pEle->pas[i].entryFloor == pEle->currentFloor)
             elevator_load(pEle, i);
@@ -159,27 +141,27 @@ static void elevator_idle(elevator_t *pEle)
         
     // Update maximum and minimum floor values
         
-    for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+    for(uint8_t i = 0; i < MAX_PASSENGERS_COUNT; ++i)
     {
         if(pEle->pas[i].entryFloor > pEle->maxFloor)
             pEle->maxFloor = pEle->pas[i].entryFloor;
-        if((pEle->pas[i].entryFloor < pEle->minFloor) && pEle->pas[i].entryFloor)
+        if(pEle->pas[i].entryFloor < pEle->minFloor && pEle->pas[i].entryFloor)
             pEle->minFloor = pEle->pas[i].entryFloor;
             
         if(pEle->pas[i].state == STATE_INSIDE)
         {
             if(pEle->pas[i].exitFloor > pEle->maxFloor)
                 pEle->maxFloor = pEle->pas[i].exitFloor;
-            if((pEle->pas[i].exitFloor < pEle->minFloor) && pEle->pas[i].exitFloor)
+            if(pEle->pas[i].exitFloor < pEle->minFloor && pEle->pas[i].exitFloor)
                 pEle->minFloor = pEle->pas[i].exitFloor;
         }
     }
         
     // Decide in which direction you want to start moving
         
-    if(pEle->maxFloor && (pEle->maxFloor > pEle->currentFloor))
+    if(pEle->maxFloor > pEle->currentFloor)
         pEle->state = STATE_RUNNING_UP;
-    else if(pEle->minFloor && (pEle->minFloor < pEle->currentFloor))
+    else if(pEle->minFloor < pEle->currentFloor)
         pEle->state = STATE_RUNNING_DOWN;
 }
 
@@ -196,11 +178,11 @@ static void elevator_running_up(elevator_t *pEle)
         
     // Look if someone waits for an elevator on the current floor
         
-    for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+    for(uint8_t i = 0; i < MAX_PASSENGERS_COUNT; ++i)
     {
-        if((pEle->pas[i].entryFloor == pEle->currentFloor) && (pEle->pas[i].state == STATE_OUTSIDE))
+        if(pEle->pas[i].entryFloor == pEle->currentFloor && pEle->pas[i].state == STATE_OUTSIDE)
             elevator_load(pEle, i);
-        if((pEle->pas[i].exitFloor == pEle->currentFloor) && (pEle->pas[i].state == STATE_INSIDE))
+        if(pEle->pas[i].exitFloor == pEle->currentFloor && pEle->pas[i].state == STATE_INSIDE)
             elevator_unload(pEle, i);
     }
         
@@ -211,20 +193,20 @@ static void elevator_running_up(elevator_t *pEle)
     pEle->maxFloor = pEle->currentFloor;
     pEle->minFloor = pEle->currentFloor;
         
-    for(int i = 0; i < MAX_PASSENGERS_COUNT; ++i)
+    for(uint8_t i = 0; i < MAX_PASSENGERS_COUNT; ++i)
     {
         // Set new maximum floor value
             
-        if((pEle->pas[i].entryFloor > pEle->maxFloor) && (pEle->pas[i].state == STATE_OUTSIDE))
+        if(pEle->pas[i].entryFloor > pEle->maxFloor && pEle->pas[i].state == STATE_OUTSIDE)
             pEle->maxFloor = pEle->pas[i].entryFloor;
-        if((pEle->pas[i].exitFloor > pEle->maxFloor) && (pEle->pas[i].state == STATE_INSIDE))
+        if(pEle->pas[i].exitFloor > pEle->maxFloor && pEle->pas[i].state == STATE_INSIDE)
             pEle->maxFloor = pEle->pas[i].exitFloor;
             
         // Set new minimum floor value
             
-        if((pEle->pas[i].entryFloor < pEle->minFloor) && (pEle->pas[i].state == STATE_OUTSIDE) && pEle->pas[i].entryFloor)
+        if(pEle->pas[i].entryFloor < pEle->minFloor && pEle->pas[i].state == STATE_OUTSIDE && pEle->pas[i].entryFloor)
             pEle->minFloor = pEle->pas[i].entryFloor;
-        if((pEle->pas[i].exitFloor < pEle->minFloor) && (pEle->pas[i].state == STATE_INSIDE) && pEle->pas[i].exitFloor)
+        if(pEle->pas[i].exitFloor < pEle->minFloor && pEle->pas[i].state == STATE_INSIDE && pEle->pas[i].exitFloor)
             pEle->minFloor = pEle->pas[i].exitFloor;
     }
         

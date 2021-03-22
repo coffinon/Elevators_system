@@ -2,27 +2,23 @@
 #include <stdbool.h>
 #include "elevator_unit_test.h"
 
+#define MODE 1
 
 int main()
 {
+#if MODE
     printf("Running elevator unit test...\n");
     if (true == elevator_unit_test())
 		return 0;
-    
-    return 0;
-}
-
-
-
-/*
-
-    unsigned int elevator_count = get_elevator_count();
+	
+#else
+	unsigned int elevator_count = get_elevator_count();
     
     elevator_t *ele[elevator_count];
     
     for(unsigned int i = 0; i < elevator_count; ++i)
     {
-        ele[i] = create_new_elevator();
+        ele[i] = elevator_create();
     }
     
     unsigned int option;
@@ -77,5 +73,7 @@ int main()
                 printf("INVALID OPTION\n\n");
         }
     }
+#endif
     
-*/
+    return 0;
+}
